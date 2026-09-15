@@ -269,6 +269,7 @@
     <h2>مسح بالكاميرا</h2>
     <div id="reader"></div>
     <button class="scan-btn" id="scanToggle">تشغيل الكاميرا</button>
+    <button class="scan-btn" id="torchToggle" style="display:none; background:var(--ink);">تشغيل الفلاش</button>
     <div class="camera-note" id="cameraNote">
       لازم توافق على إذن الكاميرا لما المتصفح يطلبه. لو الكاميرا مش شغالة أو الإضاءة ضعيفة، استخدم الإدخال اليدوي تحت.
     </div>
@@ -326,7 +327,9 @@
   const copyBtn = document.getElementById('copyBtn');
   const clearBtn = document.getElementById('clearBtn');
   const scanToggle = document.getElementById('scanToggle');
+  const torchToggle = document.getElementById('torchToggle');
   const cameraNote = document.getElementById('cameraNote');
+  let torchOn = false;
   const toast = document.getElementById('toast');
 
   function showToast(msg){
@@ -421,10 +424,7 @@
       cameraNote.textContent = 'مكتبة المسح مش متاحة دلوقتي، استخدم الإدخال اليدوي.';
       return;
     }
-    html5QrCode = new Html5Qrcode("reader");
-    const config = {
-      fps: 10,
-      qrbox: { width: 260, height: 140 },
+    html5QrCode = new Html5Qrcode("reader", {
       formatsToSupport: [
         Html5QrcodeSupportedFormats.EAN_13,
         Html5QrcodeSupportedFormats.EAN_8,
@@ -432,10 +432,24 @@
         Html5QrcodeSupportedFormats.UPC_E,
         Html5QrcodeSupportedFormats.CODE_128,
         Html5QrcodeSupportedFormats.CODE_39
-      ]
+      ],
+      verbose: false,
+      experimentalFeatures: {
+        useBarCodeDetectorIfSupported: true
+      }
+    });
+    const config = {
+      fps: 15,
+      qrbox: { width: 300, height: 150 },
+      aspectRatio: 1.6,
+      disableFlip: false
     };
     html5QrCode.start(
-      { facingMode: "environment" },
+      {
+        facingMode: "environment",
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
+      },
       config,
       (decodedText) => {
         barcodeInput.value = decodedText;
@@ -449,7 +463,13 @@
       scanning = true;
       scanToggle.textContent = 'إيقاف الكاميرا';
       scanToggle.classList.add('stop');
-      cameraNote.textContent = 'وجّه الكاميرا على الباركود ولما يتقرا هيتحط تلقائي في الخانة.';
+      cameraNote.textContent = 'قرّب الباركود لحد ما يملى المربع، وسيب مسافة صغيرة (10-15 سم) وثبّت الكاميرا شوية.';
+      try{
+        const caps = html5QrCode.getRunningTrackCapabilities();
+        if(caps && caps.torch){
+          torchToggle.style.display = 'block';
+        }
+      }catch(e){}
     }).catch((err) => {
       cameraNote.textContent = 'مقدرش أفتح الكاميرا (ممكن يكون الإذن متمنوع أو الصفحة فتحت من غير https). استخدم الإدخال اليدوي.';
     });
@@ -462,9 +482,25 @@
         scanning = false;
         scanToggle.textContent = 'تشغيل الكاميرا';
         scanToggle.classList.remove('stop');
+        torchToggle.style.display = 'none';
+        torchToggle.textContent = 'تشغيل الفلاش';
+        torchOn = false;
       }).catch(() => {});
     }
   }
+
+  torchToggle.addEventListener('click', () => {
+    if(!html5QrCode || !scanning) return;
+    torchOn = !torchOn;
+    html5QrCode.applyVideoConstraints({
+      advanced: [{ torch: torchOn }]
+    }).then(() => {
+      torchToggle.textContent = torchOn ? 'إيقاف الفلاش' : 'تشغيل الفلاش';
+    }).catch(() => {
+      showToast('الفلاش مش متاح في الجهاز ده');
+      torchOn = !torchOn;
+    });
+  });
 
   scanToggle.addEventListener('click', () => {
     if(scanning){ stopScanning(); } else { startScanning(); }
