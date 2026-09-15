@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>شيلفات الأسعار</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --bg: #F7F6F2;
+    --panel: #FFFFFF;
+    --ink: #1B1E1C;
+    --ink-soft: #6B6F6A;
+    --teal: #0E6B5C;
+    --teal-dark: #0A4F44;
+    --amber: #D98A3D;
+    --line: #E2DFD5;
+    --danger: #B4432E;
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Cairo', sans-serif;
+    padding-bottom:40px;
+  }
+  .stripes{
+    height:10px;
+    background: repeating-linear-gradient(90deg, var(--ink) 0 2px, transparent 2px 5px, var(--ink) 5px 6px, transparent 6px 11px, var(--ink) 11px 14px, transparent 14px 20px);
+    opacity:0.85;
+  }
+  header{
+    padding:20px 18px 14px;
+    background:var(--teal-dark);
+    color:#fff;
+  }
+  header h1{
+    margin:0;
+    font-size:20px;
+    font-weight:800;
+  }
+  header p{
+    margin:6px 0 0;
+    font-size:13px;
+    color:#CFE6DF;
+    line-height:1.6;
+  }
+  main{
+    max-width:480px;
+    margin:0 auto;
+    padding:16px;
+  }
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:16px;
+    margin-bottom:14px;
+  }
+  .card h2{
+    font-size:14px;
+    margin:0 0 12px;
+    color:var(--ink-soft);
+    font-weight:700;
+  }
+  #reader{
+    width:100%;
+    border-radius:10px;
+    overflow:hidden;
+    background:#111;
+    min-height:220px;
+  }
+  #reader video{
+    border-radius:10px;
+  }
+  .scan-btn{
+    width:100%;
+    padding:14px;
+    border:none;
+    border-radius:10px;
+    background:var(--teal);
+    color:#fff;
+    font-family:'Cairo',sans-serif;
+    font-weight:700;
+    font-size:16px;
+    cursor:pointer;
+    margin-top:10px;
+  }
+  .scan-btn.stop{ background:var(--danger); }
+  .camera-note{
+    font-size:12px;
+    color:var(--ink-soft);
+    margin-top:10px;
+    line-height:1.7;
+  }
+  .row{
+    display:flex;
+    gap:8px;
+  }
+  input[type=text], input[type=number]{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:16px;
+    padding:12px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:#FBFAF7;
+    color:var(--ink);
+    width:100%;
+  }
+  input:focus{
+    outline:2px solid var(--teal);
+    outline-offset:1px;
+  }
+  label{
+    font-size:12px;
+    color:var(--ink-soft);
+    display:block;
+    margin-bottom:5px;
+    font-weight:600;
+  }
+  .field{
+    flex:1;
+  }
+  .add-btn{
+    padding:12px 18px;
+    border:none;
+    border-radius:10px;
+    background:var(--ink);
+    color:#fff;
+    font-family:'Cairo',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .add-btn:disabled{
+    background:#B9B6AC;
+    cursor:not-allowed;
+  }
+  .list-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+  }
+  .count-pill{
+    background:var(--teal);
+    color:#fff;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    padding:3px 10px;
+    border-radius:20px;
+  }
+  ul.items{
+    list-style:none;
+    margin:0;
+    padding:0;
+  }
+  ul.items li{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:10px 4px;
+    border-bottom:1px solid var(--line);
+  }
+  ul.items li:last-child{ border-bottom:none; }
+  .item-barcode{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:15px;
+    font-weight:600;
+  }
+  .item-qty{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    color:var(--teal-dark);
+    background:#E8F3F0;
+    padding:2px 9px;
+    border-radius:20px;
+    margin-inline-start:10px;
+  }
+  .item-actions{
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .del-btn{
+    background:none;
+    border:none;
+    color:var(--danger);
+    font-size:13px;
+    cursor:pointer;
+    font-family:'Cairo',sans-serif;
+    font-weight:700;
+  }
+  .empty{
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:13px;
+    padding:20px 0;
+  }
+  .actions-row{
+    display:flex;
+    gap:10px;
+    margin-top:14px;
+  }
+  .copy-btn{
+    flex:1;
+    padding:14px;
+    border:none;
+    border-radius:10px;
+    background:var(--amber);
+    color:#fff;
+    font-family:'Cairo',sans-serif;
+    font-weight:700;
+    font-size:15px;
+    cursor:pointer;
+  }
+  .clear-btn{
+    padding:14px 16px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:#fff;
+    color:var(--ink-soft);
+    font-family:'Cairo',sans-serif;
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .toast{
+    position:fixed;
+    bottom:20px;
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--ink);
+    color:#fff;
+    padding:10px 20px;
+    border-radius:30px;
+    font-size:13px;
+    opacity:0;
+    transition:opacity .25s ease;
+    pointer-events:none;
+    white-space:nowrap;
+  }
+  .toast.show{ opacity:1; }
+  .session-note{
+    font-size:12px;
+    color:var(--ink-soft);
+    text-align:center;
+    line-height:1.7;
+    margin-top:6px;
+  }
+</style>
+</head>
+<body>
+
+<div class="stripes"></div>
+<header>
+  <h1>شيلفات الأسعار</h1>
+  <p>صوّر الباركود أو اكتبه، حدد الكمية المطلوب طباعتها، وفي الآخر انسخ القايمة كلها عشان تلزقها في فيوجن استور أو إكسيل.</p>
+</header>
+
+<main>
+
+  <div class="card">
+    <h2>مسح بالكاميرا</h2>
+    <div id="reader"></div>
+    <button class="scan-btn" id="scanToggle">تشغيل الكاميرا</button>
+    <div class="camera-note" id="cameraNote">
+      لازم توافق على إذن الكاميرا لما المتصفح يطلبه. لو الكاميرا مش شغالة أو الإضاءة ضعيفة، استخدم الإدخال اليدوي تحت.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>إضافة صنف</h2>
+    <div class="row">
+      <div class="field">
+        <label>الباركود</label>
+        <input type="text" id="barcodeInput" inputmode="numeric" placeholder="اكتب أو صوّر الباركود">
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <div class="field" style="max-width:110px;">
+        <label>الكمية</label>
+        <input type="number" id="qtyInput" min="1" value="1">
+      </div>
+      <div class="field" style="display:flex; align-items:flex-end;">
+        <button class="add-btn" id="addBtn" style="width:100%;">إضافة للقايمة</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="list-head">
+      <h2 style="margin:0;">القايمة</h2>
+      <span class="count-pill" id="countPill">0 صنف</span>
+    </div>
+    <ul class="items" id="itemsList"></ul>
+    <div class="empty" id="emptyMsg">لسه مفيش أصناف مضافة</div>
+
+    <div class="actions-row">
+      <button class="copy-btn" id="copyBtn">نسخ القايمة (للصق في إكسيل)</button>
+      <button class="clear-btn" id="clearBtn">مسح الكل</button>
+    </div>
+    <div class="session-note">القايمة بتتمسح لو قفلت الصفحة، فانسخها أول بأول قبل ما تخرج.</div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let items = [];
+  let html5QrCode = null;
+  let scanning = false;
+
+  const barcodeInput = document.getElementById('barcodeInput');
+  const qtyInput = document.getElementById('qtyInput');
+  const addBtn = document.getElementById('addBtn');
+  const itemsList = document.getElementById('itemsList');
+  const emptyMsg = document.getElementById('emptyMsg');
+  const countPill = document.getElementById('countPill');
+  const copyBtn = document.getElementById('copyBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const scanToggle = document.getElementById('scanToggle');
+  const cameraNote = document.getElementById('cameraNote');
+  const toast = document.getElementById('toast');
+
+  function showToast(msg){
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(()=> toast.classList.remove('show'), 1800);
+  }
+
+  function render(){
+    itemsList.innerHTML = '';
+    if(items.length === 0){
+      emptyMsg.style.display = 'block';
+    } else {
+      emptyMsg.style.display = 'none';
+      items.forEach((it, idx) => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <div>
+            <span class="item-barcode">${it.barcode}</span>
+            <span class="item-qty">×${it.qty}</span>
+          </div>
+          <div class="item-actions">
+            <button class="del-btn" data-idx="${idx}">حذف</button>
+          </div>
+        `;
+        itemsList.appendChild(li);
+      });
+    }
+    countPill.textContent = items.length + ' صنف';
+  }
+
+  itemsList.addEventListener('click', (e) => {
+    if(e.target.classList.contains('del-btn')){
+      const idx = parseInt(e.target.dataset.idx, 10);
+      items.splice(idx, 1);
+      render();
+    }
+  });
+
+  function addItem(){
+    const barcode = barcodeInput.value.trim();
+    const qty = parseInt(qtyInput.value, 10) || 1;
+    if(!barcode){
+      showToast('اكتب أو امسح باركود الأول');
+      return;
+    }
+    const existing = items.find(it => it.barcode === barcode);
+    if(existing){
+      existing.qty += qty;
+    } else {
+      items.push({ barcode, qty });
+    }
+    render();
+    barcodeInput.value = '';
+    qtyInput.value = 1;
+    barcodeInput.focus();
+    showToast('اتضاف للقايمة');
+  }
+
+  addBtn.addEventListener('click', addItem);
+  barcodeInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); qtyInput.focus(); }
+  });
+  qtyInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); addItem(); }
+  });
+
+  clearBtn.addEventListener('click', () => {
+    if(items.length === 0) return;
+    if(confirm('هتمسح كل القايمة، متأكد؟')){
+      items = [];
+      render();
+    }
+  });
+
+  copyBtn.addEventListener('click', () => {
+    if(items.length === 0){
+      showToast('القايمة فاضية');
+      return;
+    }
+    const text = items.map(it => `${it.barcode}\t${it.qty}`).join('\n');
+    navigator.clipboard.writeText(text).then(() => {
+      showToast('اتنسخت — الصقها في إكسيل أو فيوجن استور');
+    }).catch(() => {
+      showToast('حصلت مشكلة في النسخ، جرب تاني');
+    });
+  });
+
+  // Camera scanning
+  function startScanning(){
+    if(typeof Html5Qrcode === 'undefined'){
+      cameraNote.textContent = 'مكتبة المسح مش متاحة دلوقتي، استخدم الإدخال اليدوي.';
+      return;
+    }
+    html5QrCode = new Html5Qrcode("reader");
+    const config = {
+      fps: 10,
+      qrbox: { width: 260, height: 140 },
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39
+      ]
+    };
+    html5QrCode.start(
+      { facingMode: "environment" },
+      config,
+      (decodedText) => {
+        barcodeInput.value = decodedText;
+        showToast('اتقرا الباركود');
+        if(navigator.vibrate) navigator.vibrate(80);
+        qtyInput.focus();
+        qtyInput.select();
+      },
+      () => { /* ignore per-frame decode misses */ }
+    ).then(() => {
+      scanning = true;
+      scanToggle.textContent = 'إيقاف الكاميرا';
+      scanToggle.classList.add('stop');
+      cameraNote.textContent = 'وجّه الكاميرا على الباركود ولما يتقرا هيتحط تلقائي في الخانة.';
+    }).catch((err) => {
+      cameraNote.textContent = 'مقدرش أفتح الكاميرا (ممكن يكون الإذن متمنوع أو الصفحة فتحت من غير https). استخدم الإدخال اليدوي.';
+    });
+  }
+
+  function stopScanning(){
+    if(html5QrCode && scanning){
+      html5QrCode.stop().then(() => {
+        html5QrCode.clear();
+        scanning = false;
+        scanToggle.textContent = 'تشغيل الكاميرا';
+        scanToggle.classList.remove('stop');
+      }).catch(() => {});
+    }
+  }
+
+  scanToggle.addEventListener('click', () => {
+    if(scanning){ stopScanning(); } else { startScanning(); }
+  });
+
+  render();
+</script>
+
+</body>
+</html>
