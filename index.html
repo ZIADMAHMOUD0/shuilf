@@ -461,6 +461,11 @@
         if(caps && caps.torch){
           torchToggle.style.display = 'block';
         }
+        if(caps && caps.focusMode && caps.focusMode.includes('continuous')){
+          html5QrCode.applyVideoConstraints({
+            advanced: [{ focusMode: 'continuous' }]
+          }).catch(() => {});
+        }
       }catch(e){}
     }).catch((err) => {
       // Fallback: try the most basic, most compatible configuration
@@ -481,6 +486,13 @@
         scanToggle.textContent = 'إيقاف الكاميرا';
         scanToggle.classList.add('stop');
         cameraNote.textContent = 'قرّب الباركود لحد ما يملى المربع، وسيب مسافة صغيرة (10-15 سم) وثبّت الكاميرا شوية.';
+        try{
+          const caps = html5QrCode.getRunningTrackCapabilities();
+          if(caps && caps.torch){ torchToggle.style.display = 'block'; }
+          if(caps && caps.focusMode && caps.focusMode.includes('continuous')){
+            html5QrCode.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
+          }
+        }catch(e){}
       }).catch((err2) => {
         cameraNote.textContent = 'مقدرش أفتح الكاميرا. تأكد إن إذن الكاميرا مسموح لموقع github.io في إعدادات المتصفح، وإن مفيش تطبيق تاني فاتح الكاميرا. (' + (err2 && err2.name ? err2.name : 'خطأ غير معروف') + ')';
       });
