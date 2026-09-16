@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
     --bg: #F7F6F2;
@@ -270,6 +271,10 @@
     <div id="reader"></div>
     <button class="scan-btn" id="scanToggle">تشغيل الكاميرا</button>
     <button class="scan-btn" id="torchToggle" style="display:none; background:var(--ink);">تشغيل الفلاش</button>
+    <div id="zoomControl" style="display:none; margin-top:12px;">
+      <label style="margin-bottom:6px;">تقريب الكاميرا (زووم)</label>
+      <input type="range" id="zoomSlider" min="1" max="1" step="0.1" value="1" style="width:100%;">
+    </div>
     <div class="camera-note" id="cameraNote">
       لازم توافق على إذن الكاميرا لما المتصفح يطلبه. لو الكاميرا مش شغالة أو الإضاءة ضعيفة، استخدم الإدخال اليدوي تحت.
     </div>
@@ -306,6 +311,9 @@
       <button class="copy-btn" id="copyBtn">نسخ القايمة (للصق في إكسيل)</button>
       <button class="clear-btn" id="clearBtn">مسح الكل</button>
     </div>
+    <div class="actions-row">
+      <button class="copy-btn" id="excelBtn" style="background:var(--teal);">تحميل ملف إكسيل</button>
+    </div>
     <div class="session-note">القايمة بتتمسح لو قفلت الصفحة، فانسخها أول بأول قبل ما تخرج.</div>
   </div>
 
@@ -325,9 +333,12 @@
   const emptyMsg = document.getElementById('emptyMsg');
   const countPill = document.getElementById('countPill');
   const copyBtn = document.getElementById('copyBtn');
+  const excelBtn = document.getElementById('excelBtn');
   const clearBtn = document.getElementById('clearBtn');
   const scanToggle = document.getElementById('scanToggle');
   const torchToggle = document.getElementById('torchToggle');
+  const zoomControl = document.getElementById('zoomControl');
+  const zoomSlider = document.getElementById('zoomSlider');
   const cameraNote = document.getElementById('cameraNote');
   let torchOn = false;
   const toast = document.getElementById('toast');
@@ -405,6 +416,28 @@
     }
   });
 
+  excelBtn.addEventListener('click', () => {
+    if(items.length === 0){
+      showToast('القايمة فاضية');
+      return;
+    }
+    if(typeof XLSX === 'undefined'){
+      showToast('مكتبة الإكسيل مش متاحة، جرب تاني');
+      return;
+    }
+    const rows = [['الباركود', 'الكمية']];
+    items.forEach(it => rows.push([it.barcode, it.qty]));
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 20 }, { wch: 10 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'الأصناف');
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const filename = `شيلفات_الاسعار_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.xlsx`;
+    XLSX.writeFile(wb, filename);
+    showToast('اتنزل ملف الإكسيل');
+  });
+
   copyBtn.addEventListener('click', () => {
     if(items.length === 0){
       showToast('القايمة فاضية');
@@ -419,6 +452,37 @@
   });
 
   // Camera scanning
+  function setupPostStartFeatures(){
+    try{
+      const caps = html5QrCode.getRunningTrackCapabilities();
+      if(caps && caps.torch){
+        torchToggle.style.display = 'block';
+      }
+      if(caps && caps.focusMode && caps.focusMode.includes('continuous')){
+        html5QrCode.applyVideoConstraints({
+          advanced: [{ focusMode: 'continuous' }]
+        }).catch(() => {});
+      }
+      if(caps && caps.zoom && caps.zoom.max > caps.zoom.min){
+        zoomSlider.min = caps.zoom.min;
+        zoomSlider.max = caps.zoom.max;
+        zoomSlider.step = caps.zoom.step || 0.1;
+        zoomSlider.value = caps.zoom.min;
+        zoomControl.style.display = 'block';
+      }
+    }catch(e){}
+  }
+
+  // qrbox as a function: makes the scan area large relative to the screen,
+  // so bigger or slightly tilted barcodes are less likely to get cropped out
+  function dynamicQrbox(viewfinderWidth, viewfinderHeight){
+    const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+    return {
+      width: Math.floor(Math.min(viewfinderWidth * 0.9, minEdge * 1.4)),
+      height: Math.floor(viewfinderHeight * 0.55)
+    };
+  }
+
   function startScanning(){
     if(typeof Html5Qrcode === 'undefined'){
       cameraNote.textContent = 'مكتبة المسح مش متاحة دلوقتي، استخدم الإدخال اليدوي.';
@@ -427,7 +491,7 @@
     html5QrCode = new Html5Qrcode("reader");
     const config = {
       fps: 15,
-      qrbox: { width: 300, height: 150 },
+      qrbox: dynamicQrbox,
       formatsToSupport: [
         Html5QrcodeSupportedFormats.EAN_13,
         Html5QrcodeSupportedFormats.EAN_8,
@@ -455,21 +519,11 @@
       scanning = true;
       scanToggle.textContent = 'إيقاف الكاميرا';
       scanToggle.classList.add('stop');
-      cameraNote.textContent = 'قرّب الباركود لحد ما يملى المربع، وسيب مسافة صغيرة (10-15 سم) وثبّت الكاميرا شوية.';
-      try{
-        const caps = html5QrCode.getRunningTrackCapabilities();
-        if(caps && caps.torch){
-          torchToggle.style.display = 'block';
-        }
-        if(caps && caps.focusMode && caps.focusMode.includes('continuous')){
-          html5QrCode.applyVideoConstraints({
-            advanced: [{ focusMode: 'continuous' }]
-          }).catch(() => {});
-        }
-      }catch(e){}
+      cameraNote.textContent = 'حرّك الموبايل لحد ما الباركود يبان معدّل جوه المربع من غير ميل كبير، وثبّته شوية.';
+      setupPostStartFeatures();
     }).catch((err) => {
       // Fallback: try the most basic, most compatible configuration
-      const basicConfig = { fps: 10, qrbox: { width: 250, height: 130 } };
+      const basicConfig = { fps: 10, qrbox: { width: 260, height: 140 } };
       html5QrCode.start(
         { facingMode: "environment" },
         basicConfig,
@@ -485,14 +539,8 @@
         scanning = true;
         scanToggle.textContent = 'إيقاف الكاميرا';
         scanToggle.classList.add('stop');
-        cameraNote.textContent = 'قرّب الباركود لحد ما يملى المربع، وسيب مسافة صغيرة (10-15 سم) وثبّت الكاميرا شوية.';
-        try{
-          const caps = html5QrCode.getRunningTrackCapabilities();
-          if(caps && caps.torch){ torchToggle.style.display = 'block'; }
-          if(caps && caps.focusMode && caps.focusMode.includes('continuous')){
-            html5QrCode.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {});
-          }
-        }catch(e){}
+        cameraNote.textContent = 'حرّك الموبايل لحد ما الباركود يبان معدّل جوه المربع من غير ميل كبير، وثبّته شوية.';
+        setupPostStartFeatures();
       }).catch((err2) => {
         cameraNote.textContent = 'مقدرش أفتح الكاميرا. تأكد إن إذن الكاميرا مسموح لموقع github.io في إعدادات المتصفح، وإن مفيش تطبيق تاني فاتح الكاميرا. (' + (err2 && err2.name ? err2.name : 'خطأ غير معروف') + ')';
       });
@@ -509,9 +557,17 @@
         torchToggle.style.display = 'none';
         torchToggle.textContent = 'تشغيل الفلاش';
         torchOn = false;
+        zoomControl.style.display = 'none';
       }).catch(() => {});
     }
   }
+
+  zoomSlider.addEventListener('input', () => {
+    if(!html5QrCode || !scanning) return;
+    html5QrCode.applyVideoConstraints({
+      advanced: [{ zoom: parseFloat(zoomSlider.value) }]
+    }).catch(() => {});
+  });
 
   torchToggle.addEventListener('click', () => {
     if(!html5QrCode || !scanning) return;
