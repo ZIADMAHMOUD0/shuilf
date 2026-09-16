@@ -291,7 +291,7 @@
     <div class="row" style="margin-top:10px;">
       <div class="field" style="max-width:110px;">
         <label>الكمية</label>
-        <input type="number" id="qtyInput" min="1" value="1">
+        <input type="text" inputmode="numeric" pattern="[0-9]*" id="qtyInput" value="1">
       </div>
       <div class="field" style="display:flex; align-items:flex-end;">
         <button class="add-btn" id="addBtn" style="width:100%;">إضافة للقايمة</button>
@@ -328,6 +328,9 @@
 
   const barcodeInput = document.getElementById('barcodeInput');
   const qtyInput = document.getElementById('qtyInput');
+  qtyInput.addEventListener('input', () => {
+    qtyInput.value = qtyInput.value.replace(/[^0-9]/g, '');
+  });
   const addBtn = document.getElementById('addBtn');
   const itemsList = document.getElementById('itemsList');
   const emptyMsg = document.getElementById('emptyMsg');
@@ -402,7 +405,7 @@
 
   addBtn.addEventListener('click', addItem);
   barcodeInput.addEventListener('keydown', (e) => {
-    if(e.key === 'Enter'){ e.preventDefault(); qtyInput.focus(); }
+    if(e.key === 'Enter'){ e.preventDefault(); focusQtyForInput(); }
   });
   qtyInput.addEventListener('keydown', (e) => {
     if(e.key === 'Enter'){ e.preventDefault(); addItem(); }
@@ -499,8 +502,19 @@
     barcodeInput.value = value;
     showToast('اتقرا الباركود');
     if(navigator.vibrate) navigator.vibrate(80);
+    focusQtyForInput();
+  }
+
+  function focusQtyForInput(){
+    qtyInput.value = '';
+    // A couple of nested attempts help the on-screen keyboard actually pop up
+    // right after an async event (like a barcode decode) rather than only
+    // placing the cursor without opening the keyboard.
     qtyInput.focus();
-    qtyInput.select();
+    requestAnimationFrame(() => {
+      qtyInput.focus();
+      qtyInput.click();
+    });
   }
 
   function startScanning(){
