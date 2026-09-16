@@ -483,6 +483,26 @@
     };
   }
 
+  // UPC-A barcodes are printed with a leading "0" (EAN-13 compatible form),
+  // but decoders often report them as a 12-digit UPC-A value and drop that
+  // leading zero. We add it back so the number always matches what's printed.
+  function handleScanResult(decodedText, decodedResult){
+    let value = decodedText;
+    try{
+      const formatName = decodedResult && decodedResult.result && decodedResult.result.format
+        ? decodedResult.result.format.formatName
+        : null;
+      if(formatName === 'UPC_A' && /^\d{12}$/.test(value)){
+        value = '0' + value;
+      }
+    }catch(e){}
+    barcodeInput.value = value;
+    showToast('اتقرا الباركود');
+    if(navigator.vibrate) navigator.vibrate(80);
+    qtyInput.focus();
+    qtyInput.select();
+  }
+
   function startScanning(){
     if(typeof Html5Qrcode === 'undefined'){
       cameraNote.textContent = 'مكتبة المسح مش متاحة دلوقتي، استخدم الإدخال اليدوي.';
@@ -507,12 +527,8 @@
     html5QrCode.start(
       { facingMode: "environment" },
       config,
-      (decodedText) => {
-        barcodeInput.value = decodedText;
-        showToast('اتقرا الباركود');
-        if(navigator.vibrate) navigator.vibrate(80);
-        qtyInput.focus();
-        qtyInput.select();
+      (decodedText, decodedResult) => {
+        handleScanResult(decodedText, decodedResult);
       },
       () => { /* ignore per-frame decode misses */ }
     ).then(() => {
@@ -527,12 +543,8 @@
       html5QrCode.start(
         { facingMode: "environment" },
         basicConfig,
-        (decodedText) => {
-          barcodeInput.value = decodedText;
-          showToast('اتقرا الباركود');
-          if(navigator.vibrate) navigator.vibrate(80);
-          qtyInput.focus();
-          qtyInput.select();
+        (decodedText, decodedResult) => {
+          handleScanResult(decodedText, decodedResult);
         },
         () => {}
       ).then(() => {
